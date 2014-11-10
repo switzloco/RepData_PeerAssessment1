@@ -1,25 +1,104 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Peer Assessment 1 - ReproRes"
+author: "Nick Switzer"
+date: "Monday, November 10, 2014"
+output: html_document
 ---
 
+<b>1. Loading and Preprocessing the data</b>
 
-## Loading and preprocessing the data
+First, we load the activity data into a dataframe using the read.csv() command. The only processing necessary is to convert the date column into date objects instead of factors. This will allow for better date processing later. 
+
+In my opinion, the column names are already human-readable. 
+
+```{r}
+actSet <- read.csv("C:/Users/nswitzer/Documents/Activity Monitoring Data/activity.csv")
+
+actSet$date <-as.Date(actSet$date,format="%Y-%m-%d")
+```
+
+<b>2.What is the mean total number of steps taken per day?</b>
+
+In order to answer this question, the data must be aggregated by date. 
+
+```{r}
+## Totals per day
+
+daySum <- aggregate(steps~date,sum,na.rm=TRUE, data=actSet)
+
+##Histogram of totals per day
+
+hist(daySum$steps)
+
+dayMedian <- (median(daySum$steps))
+dayMean <- (mean(daySum$steps))
+```
+
+Voila! The median steps in a day is `r dayMedian` and the mean steps per day is `r dayMean`.
+
+<b>3. What is the average daily activity pattern</b>
+
+```{r}
+
+intervalMean <- aggregate(steps~interval,mean,na.rm=TRUE, data=actSet)
+
+plot(intervalMean$interval,intervalMean$steps,type="l")
+
+##Get max interval
+
+maxInterval <- (subset(actSet,steps == max(steps,na.rm=T)))
+
+
+```
+
+The interval with the maximum average steps is `r maxInterval$interval` at `r maxInterval$steps` steps.
+
+<b>4. Imputing Missing Values</b>
+
+There are many missing values. We will count them and replace them with the median. More sophisticated methods are available for replacement, but that is not required for this project. 
+
+```{r}
+
+##Count missing
+
+missingVals <- sum(is.na(actSet$steps))
+
+##Impute missing values
+
+actSetFilled <- actSet
+
+actSetFilled$steps[is.na(actSetFilled$steps)] <- median(actSetFilled$steps,na.rm=T)
+
+#Count missing values again
+
+daySumFilled <- aggregate(steps~date,sum,na.rm=TRUE, data=actSetFilled)
+
+hist(daySumFilled$steps)
+
+```
+
+There were `r missingVals` NA values counted before replacement with the median.
+
+The new histogram shows that many low values were imputed (when compared to the first histogram).
+
+<b>5. Are there differences between weekdays and weekends?</b>
+
+A new column was added using the isWeekday() function from the timeDate package.
 
 
 
-## What is mean total number of steps taken per day?
+##Weekday vs. Weekend
+```{r}
+library("timeDate")
+actSet$weekday <- sapply(actSet$date,isWeekday,wday=1:5)
+actSet$weekday <- sapply(actSet$weekday, function(x) if(x){x<-"weekday"}else{x<-"weekend"})
 
+dayEndSum <- aggregate(steps~weekday+interval,mean,na.rm=TRUE, data=actSet)
 
+library("ggplot2")
 
-## What is the average daily activity pattern?
+blue<- qplot(interval,steps,data = dayEndSum,facets = .~weekday,method="lm")
+print(blue)
+```
 
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+It appears there is a larger spike of activity on weekdays in the late morning, but the afternoons are more active in the weekends. 
